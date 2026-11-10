@@ -1,0 +1,160 @@
+@startuml
+' EL CODIGO UML DE LA IMAGEN PUESTA EN EL DOCUMENTO DE WORD!!
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 60
+hide empty members
+hide circle
+
+package "Enumeraciones" {
+  enum TipoPan {
+    TRADICIONAL
+    INTEGRAL
+    --
+    - minutosPorBandejaArtesanal: int
+    - minutosPorLoteIndustrial: int
+    + getMinutosPorBandejaArtesanal(): int
+    + getMinutosPorLoteIndustrial(): int
+  }
+
+  enum EstadoPedido {
+    PENDIENTE
+    ASIGNADO
+    CANCELADO
+  }
+
+  enum TipoEmpleado {
+    PANADERO_ARTESANAL
+    PANADERO_INDUSTRIAL
+    CAJERO
+    --
+    - etiqueta: String
+    + getEtiqueta(): String
+  }
+}
+package "Modelo: Empleados" {
+  abstract class Empleado {
+    {abstract}
+    # nombreCompleto: String
+    # documento: String
+    # codigo: String
+    # minutosDisponibles: int
+    --
+    + tieneMinutosSuficientes(minutos: int): boolean
+    + descontarMinutos(minutos: int): void
+    + devolverMinutos(minutos: int): void
+    {abstract} + getTipoEmpleado(): TipoEmpleado
+  }
+
+  abstract class Panadero {
+    {abstract}
+    --
+    + {abstract} calcularTiempoProduccion(pedido: Pedido): int
+    + puedeAtender(pedido: Pedido): boolean
+  }
+
+  class PanaderoArtesanal {
+    + {static} {final} CAPACIDAD_BANDEJA: int
+    --
+    + calcularTiempoProduccion(pedido: Pedido): int
+    + getTipoEmpleado(): TipoEmpleado
+  }
+
+  class PanaderoIndustrial {
+    + {static} {final} CAPACIDAD_LOTE: int
+    + {static} {final} MINUTOS_PREPARACION_MAQUINA: int
+    --
+    + calcularTiempoProduccion(pedido: Pedido): int
+    + getTipoEmpleado(): TipoEmpleado
+  }
+
+  class Cajero {
+    - cajaAsignada: String
+    --
+    + getCajaAsignada(): String
+    + getTipoEmpleado(): TipoEmpleado
+  }
+}
+package "Modelo: Negocio" {
+  class Pedido {
+    - codigo: String
+    - nombreCliente: String
+    - cantidadUnidades: int
+    - codigoEmpleadoAsignado: String
+    - minutosReservados: int
+    --
+    + marcarComoAsignado(codigoEmpleado: String, minutos: int): void
+    + marcarComoCancelado(): void
+  }
+
+  class Panaderia {
+    - nombre: String
+    - empleados: List<Empleado>
+    - pedidos: List<Pedido>
+    --
+    + registrarEmpleado(empleado: Empleado): void
+    + registrarPedido(codigo: String, cliente: String, tipo: TipoPan, cant: int): Pedido
+    + asignarPedido(codigoPedido: String): Pedido
+    + cancelarPedido(codigoPedido: String): Pedido
+    - seleccionarPanaderoMasRapido(pedido: Pedido): Panadero
+  }
+}
+
+package "Controladores y GUI" {
+  class PanaderiaController <<singleton>> {
+    - {static} instancia: PanaderiaController
+    --
+    + {static} getInstance(): PanaderiaController
+    + registrarEmpleado(...): void
+    + registrarPedido(...): Pedido
+    + asignarPedido(...): Pedido
+    + cancelarPedido(...): Pedido
+  }
+
+  class MainViewController {
+    - refrescarVistas(): void
+  }
+
+  class EmpleadoViewController {
+    + refrescarTabla(): void
+  }
+
+  class PedidoViewController {
+    + refrescarTablas(): void
+  }
+
+  class AlertUtil {
+    + {static} mostrarInfo(...): void
+    + {static} mostrarError(...): void
+    + {static} confirmar(...): boolean
+  }
+
+  class App {
+    + start(stage: Stage): void
+  }
+}
+
+
+' Herencias (de Arriba hacia Abajo)
+Empleado <|-- Panadero
+Empleado <|-- Cajero
+Panadero <|-- PanaderoArtesanal
+Panadero <|-- PanaderoIndustrial
+
+' Composición y Agregación de la Panadería
+Panaderia "1" *-- "0..*" Empleado : empleados (orden registro)
+Panaderia "1" *-- "0..*" Pedido : historial pedidos
+
+' Asociaciones de Pedido
+Pedido --> TipoPan : tipoPan
+Pedido --> EstadoPedido : estado
+
+' Relaciones de Control y Vistas
+PanaderiaController *-- Panaderia : fachada / model
+EmpleadoViewController --> PanaderiaController : usa
+PedidoViewController --> PanaderiaController : usa
+MainViewController --> EmpleadoViewController : incluye
+MainViewController --> PedidoViewController : incluye
+App --> MainViewController : carga vista
+
+@enduml
